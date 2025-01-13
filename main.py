@@ -1,4 +1,3 @@
-# main.py
 import streamlit as st
 import json
 from database.connector import DatabaseConnector
@@ -16,6 +15,16 @@ def save_query(query, filename):
 def main():
     st.title("Natural Language to SQL Query")
     
+    # Initialize session state variables
+    if 'generated_query' not in st.session_state:
+        st.session_state.generated_query = ""
+    if 'query_results' not in st.session_state:
+        st.session_state.query_results = None
+    if 'db_connector' not in st.session_state:
+        st.session_state.db_connector = None
+    if 'text_to_sql' not in st.session_state:
+        st.session_state.text_to_sql = None
+    
     # Database connection section
     st.sidebar.header("Database Connection")
     db_host = st.sidebar.text_input("Host", "localhost")
@@ -29,12 +38,6 @@ def main():
         type="password",
         value=os.getenv('OPENROUTER_API_KEY', '')
     )
-    
-    # Initialize components
-    if 'db_connector' not in st.session_state:
-        st.session_state.db_connector = None
-    if 'text_to_sql' not in st.session_state:
-        st.session_state.text_to_sql = None
     
     # Connect button
     if st.sidebar.button("Connect"):
@@ -56,37 +59,47 @@ def main():
     # Main query interface
     user_input = st.text_area("Enter your question:", "What were the sales in the last year?")
     
+    # Generate Query button
     if st.button("Generate Query"):
         if st.session_state.db_connector and st.session_state.text_to_sql:
             try:
-                generated_query = st.session_state.text_to_sql.generate_query(user_input)
-                st.session_state['current_query'] = generated_query
-                
-                # Display the generated query
-                st.subheader("Generated SQL Query")
-                st.code(generated_query, language="sql")
-                
-                # Query modification
-                modified_query = st.text_area("Modify Query:", generated_query)
-                
-                # Execute and save options
-                col1, col2 = st.columns(2)
-                with col1:
-                    if st.button("Execute Query"):
-                        results = st.session_state.db_connector.execute_query(modified_query)
-                        st.subheader("Results")
-                        st.dataframe(results)
-                
-                with col2:
-                    save_filename = st.text_input("Save as:", "query.sql")
-                    if st.button("Save Query"):
-                        save_query(modified_query, save_filename)
-                        st.success(f"Query saved to {save_filename}")
-                        
+                st.session_state.generated_query = st.session_state.text_to_sql.generate_query(user_input)
+                st.session_state.query_results = None  # Reset results when generating new query
             except Exception as e:
-                st.error(f"Error: {str(e)}")
-        else:
-            st.warning("Please connect to a database first.")
+                st.error(f"Error generating query: {str(e)}")
+    
+    # Display and handle generated query
+    if st.session_state.generated_query:
+        st.subheader("Generated SQL Query")
+        st.code(st.session_state.generated_query, language="sql")
+        
+        # Query modification
+        modified_query = st.text_area("Modify Query:", st.session_state.generated_query)
+        
+        # Execute and save options
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("Execute Query", key="execute"):
+                try:
+                    results = st.session_state.db_connector.execute_query(modified_query)
+                    st.session_state.query_results = results
+                except Exception as e:
+                    st.error(f"Error executing query: {str(e)}")
+        
+        with col2:
+            save_filename = st.text_input("Save as:", "query.sql")
+            if st.button("Save Query", key="save"):
+                try:
+                    save_query(modified_query, save_filename)
+                    st.success(f"Query saved to {save_filename}")
+                except Exception as e:
+                    st.error(f"Error saving query: {str(e)}")
+        
+        # Display results if they exist
+        if st.session_state.query_results is not None:
+            st.subheader("Results")
+            st.dataframe(st.session_state.query_results)
 
 if __name__ == "__main__":
     main()
