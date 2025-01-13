@@ -57,7 +57,7 @@ def main():
             st.sidebar.error(f"Connection failed: {str(e)}")
     
     # Main query interface
-    user_input = st.text_area("Enter your question:", "What were the sales in the last year?")
+    user_input = st.text_area("Enter your question:", "What were this last year's sales by department?")
     
     # Generate Query button
     if st.button("Generate Query"):
