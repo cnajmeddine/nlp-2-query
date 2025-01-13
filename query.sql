@@ -1,4 +1,3 @@
-SELECT d.department_name, SUM(s.amount) AS total_sales
-FROM sales s
-JOIN departments d ON s.department_id = d.department_id
-GROUP BY d.department_name;
+SELECT e.employee_id, e.first_name, e.last_name, d.department_name
+FROM employees e
+JOIN departments d ON e.department_id = d.department_id;
